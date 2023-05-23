@@ -44,17 +44,17 @@ class DHCPServer():
                               ethertype=2048)
         v = ipv4.ipv4(dst='255.255.255.255', flags=0, header_length=5, identification=0, offset=0, option=None,
                       proto=17, src='192.168.1.1', tos=16, ttl=128, version=4)
-        # d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr, ciaddr='0.0.0.0', flags=0, giaddr='0.0.0.0',
-        #               hlen=6, hops=0, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2, secs=0,
-        #               siaddr='0.0.0.0', xid=pkt.get_protocol(dhcp.dhcp).xid,
-        #               yiaddr='192.168.1.1')
+        u = udp.udp(dst_port=68, src_port=67)
+        d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr, ciaddr='0.0.0.0', flags=0, giaddr='0.0.0.0',
+                      hlen=6, hops=0, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2, secs=0,
+                      siaddr='0.0.0.0', xid=pkt.get_protocol(dhcp.dhcp).xid,
+                      yiaddr='192.168.1.1')
         # d = dhcp.dhcp(chaddr='00:00:00:00:00:01',
         #               op=2)
-        u = udp.udp(dst_port=68, src_port=67)
         p.add_protocol(e)
         p.add_protocol(v)
-        # p.add_protocol(d)
         p.add_protocol(u)
+        p.add_protocol(d)
         # p.serialize()
         return p
         # TODO: Generate DHCP OFFER packet here
@@ -62,6 +62,7 @@ class DHCPServer():
     @classmethod
     def handle_dhcp(cls, datapath, port, pkt):
         decoded_packet = pkt.get_protocol(dhcp.dhcp)
+        print(decoded_packet)
         if str(decoded_packet.yiaddr) == '0.0.0.0':
             reply = cls.assemble_offer(pkt, datapath)
         else:
