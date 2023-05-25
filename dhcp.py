@@ -10,7 +10,7 @@ class Config():
     controller_macAddr = '7e:49:b3:f0:f9:99'  # don't modify, a dummy mac address for fill the mac enrty
     controller_ip = '192.168.1.1'
     dns = '8.8.8.8'  # don't modify, just for the dns entry
-    start_ip = '192.168.1.2'  # can be modified
+    start_ip = '192.168.1.8'  # can be modified
     end_ip = '192.168.1.200'  # can be modified
     netmask = '255.255.255.0'  # can be modified
 
@@ -32,33 +32,37 @@ class DHCPServer():
     ip_pool_start = int(start_ip.split('.')[-1])
     ip_pool_end = int(end_ip.split('.')[-1])
     pool = []
-    print(ip_pool_start)
-    print(ip_pool_end)
+    # print(ip_pool_start)
+    # print(ip_pool_end)
     for i in range(ip_pool_start, ip_pool_end + 1):
-        print(i)
+        # print(i)
         pool.append(i)
 
-    print(pool)
+    # print(pool)
+
+    not_acked_ip = []
+
+    request_ip_bytes = b''
 
     @classmethod
     def offer_ip(cls):
         addr_last_8 = cls.pool.pop(0)
-        print(cls.pool)
-        print(addr_last_8)
+        cls.not_acked_ip.append(addr_last_8)
+        # print(cls.pool)
+        # print(addr_last_8)
         return '192.168.1.' + str(addr_last_8)
 
     @classmethod
     def assemble_ack(cls, pkt, datapath, port):
         # TODO: Generate DHCP ACK packet here
-        return None
-
-    @classmethod
-    def assemble_offer(cls, pkt, datapath):
+        request_ip = str(cls.request_ip_bytes[0]) + '.' + str(cls.request_ip_bytes[1]) + '.' + str(cls.request_ip_bytes[2]) + '.' + str(cls.request_ip_bytes[3])
+        # if cls.request_ip_bytes[3] in cls.not_acked_ip:
+        #     cls.not_acked_ip.remove(cls.request_ip_bytes[3])
         p = packet.Packet()
         e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
                               src=cls.hardware_addr,
                               ethertype=2048)
-        v = ipv4.ipv4(dst='255.255.255.255', option=None,
+        v = ipv4.ipv4(dst=request_ip, option=None,
                       proto=17, src=cls.controller_ip)
         # v = ipv4.ipv4(dst='255.255.255.255', flags=0, header_length=5, identification=0, offset=0, option=None,
         #               proto=17, src=cls.controller_ip, tos=16, ttl=128, version=4)
@@ -66,9 +70,8 @@ class DHCPServer():
         d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr,
                       hlen=6, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2,
                       xid=pkt.get_protocol(dhcp.dhcp).xid,
-                      siaddr=cls.controller_ip,
-                      yiaddr=cls.offer_ip(), boot_file='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', sname='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                      options=dhcp.options(magic_cookie='99.130.83.99', option_list=[dhcp.option(tag=53, value=b'\x02'), dhcp.option(tag=1, value=cls.netmask_bytes)]))
+                      yiaddr=request_ip, boot_file='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', sname='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                      options=dhcp.options(magic_cookie='99.130.83.99', option_list=[dhcp.option(tag=53, value=b'\x05'), dhcp.option(tag=1, value=cls.netmask_bytes), dhcp.option(tag=54, value=b'\xc0\xa8\x01\x01'), dhcp.option(tag=6, value=b'\x08\x08\x08\x08'), dhcp.option(tag=3, value=b'\xc0\xa8\x01\x01'), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b'')]))
         # d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr, ciaddr='0.0.0.0', flags=0, giaddr='0.0.0.0',
         #               hlen=6, hops=0, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2, secs=0,
         #               siaddr='0.0.0.0', xid=pkt.get_protocol(dhcp.dhcp).xid,
@@ -80,19 +83,66 @@ class DHCPServer():
         p.add_protocol(u)
         p.add_protocol(d)
         # p.serialize()
-        print(p.get_protocol(dhcp.dhcp))
+        # print(p.get_protocol(dhcp.dhcp))
+        return p
+
+    @classmethod
+    def assemble_offer(cls, pkt, datapath):
+        offer_ip = cls.offer_ip()
+        p = packet.Packet()
+        e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
+                              src=cls.hardware_addr,
+                              ethertype=2048)
+        v = ipv4.ipv4(dst=offer_ip, option=None,
+                      proto=17, src=cls.controller_ip)
+        # v = ipv4.ipv4(dst='255.255.255.255', flags=0, header_length=5, identification=0, offset=0, option=None,
+        #               proto=17, src=cls.controller_ip, tos=16, ttl=128, version=4)
+        u = udp.udp(dst_port=68, src_port=67)
+        d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr,
+                      hlen=6, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2,
+                      xid=pkt.get_protocol(dhcp.dhcp).xid,
+                      yiaddr=offer_ip, boot_file='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', sname='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                      options=dhcp.options(magic_cookie='99.130.83.99', option_list=[dhcp.option(tag=53, value=b'\x02'), dhcp.option(tag=1, value=cls.netmask_bytes), dhcp.option(tag=54, value=b'\xc0\xa8\x01\x01'), dhcp.option(tag=6, value=b'\x08\x08\x08\x08'), dhcp.option(tag=3, value=b'\xc0\xa8\x01\x01'), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b''), dhcp.option(tag=0, value=b'')]))
+        # d = dhcp.dhcp(chaddr=pkt.get_protocol(dhcp.dhcp).chaddr, ciaddr='0.0.0.0', flags=0, giaddr='0.0.0.0',
+        #               hlen=6, hops=0, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2, secs=0,
+        #               siaddr='0.0.0.0', xid=pkt.get_protocol(dhcp.dhcp).xid,
+        #               yiaddr=cls.controller_ip, sname='\0', boot_file='\0')
+        # d = dhcp.dhcp(chaddr='00:00:00:00:00:01',
+        #               op=2)
+        p.add_protocol(e)
+        p.add_protocol(v)
+        p.add_protocol(u)
+        p.add_protocol(d)
+        # p.serialize()
+        # print(p.get_protocol(dhcp.dhcp))
         return p
         # TODO: Generate DHCP OFFER packet here
 
     @classmethod
     def handle_dhcp(cls, datapath, port, pkt):
+        print(111)
+        print(port)
+        print(datapath)
         decoded_packet = pkt.get_protocol(dhcp.dhcp)
-        print(decoded_packet)
-        if str(decoded_packet.yiaddr) == '0.0.0.0':
+        # print(decoded_packet)
+        # print(decoded_packet.options.option_list)
+        pkt_options_list = decoded_packet.options.option_list
+        pkt_dhcp_type = b''
+        for i in pkt_options_list:
+            if i.tag == 53:
+                pkt_dhcp_type = i.value
+            elif i.tag == 50:
+                cls.request_ip_bytes = i.value
+        reply = None
+        if pkt_dhcp_type == b'\x01':
             reply = cls.assemble_offer(pkt, datapath)
-        else:
+        elif pkt_dhcp_type == b'\x03':
             reply = cls.assemble_ack(pkt, datapath, port)
-        cls._send_packet(datapath, port, reply)
+        if (pkt_dhcp_type == b'\x01') or (pkt_dhcp_type == b'\x03'):
+            cls._send_packet(datapath, port, reply)
+            print(222)
+            print(port)
+            print(datapath)
         # TODO: Specify the type of received DHCP packet
         # You may choose a valid IP from IP pool and genereate DHCP OFFER packet
         # Or generate a DHCP ACK packet
