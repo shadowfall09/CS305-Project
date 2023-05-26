@@ -107,8 +107,6 @@ class DHCPServer():
         #               hlen=6, hops=0, htype=pkt.get_protocol(dhcp.dhcp).htype, op=2, secs=0,
         #               siaddr='0.0.0.0', xid=pkt.get_protocol(dhcp.dhcp).xid,
         #               yiaddr=cls.controller_ip, sname='\0', boot_file='\0')
-        # d = dhcp.dhcp(chaddr='00:00:00:00:00:01',
-        #               op=2)
         p.add_protocol(e)
         p.add_protocol(v)
         p.add_protocol(u)
