@@ -20,12 +20,17 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventSwitchEnter)
     def handle_switch_add(self, ev):
+        print("switch_add")
+        # print(ev.switch.dp.ports)
+        attributes = vars(ev.switch.dp)
+        print(attributes)
         """
         Event handler indicating a switch has come online.
         """
 
     @set_ev_cls(event.EventSwitchLeave)
     def handle_switch_delete(self, ev):
+        print('switch_delete')
         """
         Event handler indicating a switch has been removed
         """
@@ -33,6 +38,9 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventHostAdd)
     def handle_host_add(self, ev):
+        print('host_add')
+        attributes = vars(ev.host)
+        print(attributes)
         """
         Event handler indiciating a host has joined the network
         This handler is automatically triggered when a host sends an ARP response.
@@ -41,6 +49,11 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventLinkAdd)
     def handle_link_add(self, ev):
+        print('link_add')
+        # print(ev)
+        # attributes = vars(ev.link)
+        # print(attributes)
+        # print(ev.link.src)
         """
         Event handler indicating a link between two switches has been added
         """
