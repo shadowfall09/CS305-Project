@@ -27,11 +27,11 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventSwitchEnter)
     def handle_switch_add(self, ev):
         print("switch_add")
-        switch.append(ev.switch.dp)
-        # print(ev.switch)
+        switch.append(ev.switch)
+        print(ev.switch)
         # print(ev.switch.dp)
         # print(ev.switch.dp.ports)
-        # attributes = vars(ev.switch.dp.ports)
+        # attributes = vars(ev.switch.ports)
         # print(attributes)
         """
         Event handler indicating a switch has come online.
@@ -114,8 +114,8 @@ class ControllerApp(app_manager.RyuApp):
             pkt_dhcp = pkt.get_protocols(dhcp.dhcp)
             inPort = msg.in_port
             if not pkt_dhcp:
-                # print(pkt)
                 if pkt.get_protocols(arp.arp):
+                    # print(pkt)
                     reply_pkt = packet.Packet()
                     reply_mac = '00:00:00:00:00:00'
                     if pkt.get_protocol(arp.arp).dst_ip == pkt.get_protocol(arp.arp).src_ip:
