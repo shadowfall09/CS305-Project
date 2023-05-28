@@ -118,12 +118,15 @@ class ControllerApp(app_manager.RyuApp):
                 if pkt.get_protocols(arp.arp):
                     reply_pkt = packet.Packet()
                     reply_mac = '00:00:00:00:00:00'
-                    for host in hosts:
-                        # print(f"host.ipv4 {host.ipv4[0]}")
-                        # print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
-                        if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
-                            reply_mac = host.mac
-                            break
+                    if pkt.get_protocol(arp.arp).dst_ip == pkt.get_protocol(arp.arp).src_ip:
+                        reply_mac = pkt.get_protocol(arp.arp).src_mac
+                    else:
+                        for host in hosts:
+                            # print(f"host.ipv4 {host.ipv4[0]}")
+                            # print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
+                            if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
+                                reply_mac = host.mac
+                                break
                     e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
                                           src=DHCPServer.hardware_addr,
                                           ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
