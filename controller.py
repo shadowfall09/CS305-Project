@@ -28,10 +28,9 @@ class ControllerApp(app_manager.RyuApp):
     def handle_switch_add(self, ev):
         print("switch_add")
         switch.append(ev.switch)
-        print(ev.switch)
-        # print(ev.switch.dp)
+        Dijkstra_change()
         # print(ev.switch.dp.ports)
-        # attributes = vars(ev.switch.ports)
+        # attributes = vars(ev.switch.dp.id)
         # print(attributes)
         """
         Event handler indicating a switch has come online.
@@ -63,6 +62,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
+        Dijkstra_change()
         # print(ev.link)
         # attributes = vars(ev.link.src)
         # print(attributes)
@@ -122,17 +122,15 @@ class ControllerApp(app_manager.RyuApp):
                         reply_mac = pkt.get_protocol(arp.arp).src_mac
                     else:
                         for host in hosts:
-                            # print(f"host.ipv4 {host.ipv4[0]}")
-                            # print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
                             if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
                                 reply_mac = host.mac
                                 break
                     e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
                                           src=DHCPServer.hardware_addr,
                                           ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
-                    a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                    a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip, dst_mac=pkt.get_protocol(arp.arp).src_mac,
                                 opcode=arp.ARP_REPLY,
-                                src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                                src_ip=pkt.get_protocol(arp.arp).dst_ip, src_mac=reply_mac)
                     # a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
                     #             hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
                     #             src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
@@ -161,8 +159,8 @@ class Graph:
         # 记录u，v两节点之间的距离
         # 要注意的是如果是有向图只需定义单向的权重
         # 如果是无向图则需定义双向权重
-        self.edges[u - 1][v - 1] = 1
-        self.edges[v - 1][u - 1] = 1
+        self.edges[u][v] = 1
+        # self.edges[v - 1][u - 1] = 1
 
     def dijkstra(self, start_vertex):
         # 开始时定义源节点到其他所有节点的距离为无穷大
@@ -198,36 +196,40 @@ class Graph:
         return D, previousVertex
 
 
-def Dijkstra():
-    g = Graph(len(switch) + len(hosts))
-    for link in link_between_switch:
-        g.add_edge(link.src.dpid, link.dst.dpid)
-    for i in range(len(hosts)):
-        g.add_edge(i + 1 + len(switch), hosts[i].port.dpid)
-    D, previousVertex = g.dijkstra(0)
-    # print(previousVertex)
-    # 每个节点的前节点，可通过回溯得到最短路径
-    for vertex in range(len(D)):
-        pass
-        # print(f"distance from vertex {0} to vertex {vertex} is {D[vertex]}")
-
-    # 节点名字与数字的对应表
-    # dic = {0: 's', 1: 'v', 2: 'u', 3: 'w', 4: 't', 5: 'z'}
-    # path = []
-    # cheapest_path = []
-    # key = 4
-    # # 回溯，得到源节点到目标节点的最佳路径
-    # while True:
-    #     if key == 0:
-    #         path.append(0)
-    #         break
-    #     else:
-    #         path.append(key)
-    #         key = previousVertex[key]
-    # # 节点名字由数字转成字符
-    # for point in path[:: -1]:
-    #     cheapest_path.append(dic[point])
-    # cheapest_path = "->".join(cheapest_path)
-    #
-    # print(f"distance from vertex {dic[0]} to vertex {dic[4]} is {D[4]},"
-    #       f"the cheapest path is {cheapest_path}")
+def Dijkstra_change():
+    if len(link_between_switch) == 0:
+        print('Currently no edges!')
+        return
+    dic = {}
+    dic2 = {}
+    o = 0
+    for one_switch in switch:
+        dic[o] = one_switch.dp.id
+        dic2[one_switch.dp.id] = o
+        o += 1
+    for source0 in range(len(switch)):
+        g = Graph(len(switch))
+        for link in link_between_switch:
+            g.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
+        D, previousVertex = g.dijkstra(source0)
+        for target0 in range(len(switch)):
+            try:
+                path = []
+                cheapest_path = []
+                target = target0
+                # 回溯，得到源节点到目标节点的最佳路径
+                while True:
+                    if target == source0:
+                        path.append(source0)
+                        break
+                    else:
+                        path.append(target)
+                        target = previousVertex[target]
+                # 节点名字由数字转成字符
+                for point in path[:: -1]:
+                    cheapest_path.append(str(point + 1))
+                cheapest_path = "->".join(cheapest_path)
+                print(f"distance from switch {dic[source0]} to switch {dic[target0]} is {D[target0]},"
+                      f"the shortest path is {cheapest_path}")
+            except KeyError:
+                print(f"switch {dic[source0]} is not connected to switch {dic[target0]}")
