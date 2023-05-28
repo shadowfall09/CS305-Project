@@ -15,7 +15,8 @@ from queue import PriorityQueue
 
 switch = []
 link_between_switch = []
-host = []
+hosts = []
+
 
 class ControllerApp(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
@@ -27,7 +28,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_switch_add(self, ev):
         print("switch_add")
         switch.append(ev.switch.dp)
-        print(ev.switch.dp.ports)
+        # print(ev.switch.dp.ports)
         # attributes = vars(ev.switch.dp.ports)
         # print(attributes)
         """
@@ -44,10 +45,10 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventHostAdd)
     def handle_host_add(self, ev):
         print('host_add')
-        host.append(ev.host)
-        # print(ev.host.port)
-        attributes = vars(ev.host.port)
-        print(attributes)
+        hosts.append(ev.host)
+        # print(ev.host)
+        # attributes = vars(ev.host)
+        # print(attributes)
         """
         Event handler indiciating a host has joined the network
         This handler is automatically triggered when a host sends an ARP response.
@@ -58,10 +59,10 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
-        attributes = vars(ev.link.src)
-        print(attributes)
-        attributes = vars(ev.link.dst)
-        print(attributes)
+        # attributes = vars(ev.link.src)
+        # print(attributes)
+        # attributes = vars(ev.link.dst)
+        # print(attributes)
         # print(ev.link.dst.name.decode())
         """
         Event handler indicating a link between two switches has been added
@@ -84,6 +85,21 @@ class ControllerApp(app_manager.RyuApp):
         """
         # TODO:  Update network topology and flow rules
 
+    def _send_packet(cls, datapath, port, pkt):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        if isinstance(pkt, str):
+            pkt = pkt.encode()
+        pkt.serialize()
+        data = pkt.data
+        actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER,
+                                  actions=actions,
+                                  data=data)
+        datapath.send_msg(out)
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
         try:
@@ -93,8 +109,25 @@ class ControllerApp(app_manager.RyuApp):
             pkt_dhcp = pkt.get_protocols(dhcp.dhcp)
             inPort = msg.in_port
             if not pkt_dhcp:
+                print(pkt)
                 if pkt.get_protocols(arp.arp):
-                    print(pkt)
+                    reply_pkt = packet.Packet()
+                    reply_mac = '00:00:00:00:00:00'
+                    for host in hosts:
+                        print(f"host.ipv4 {host.ipv4[0]}")
+                        print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
+                        if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
+                            reply_mac = host.mac
+                            break
+                    e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
+                                          src=DHCPServer.hardware_addr,
+                                          ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
+                    a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                                hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
+                                src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                    reply_pkt.add_protocol(e)
+                    reply_pkt.add_protocol(a)
+                    self._send_packet(datapath, inPort, reply_pkt)
                 # Dijkstra()
                 # TODO: handle other protocols like ARP
                 pass
@@ -103,7 +136,6 @@ class ControllerApp(app_manager.RyuApp):
             return
         except Exception as e:
             self.logger.error(e)
-
 
 
 class Graph:
@@ -118,8 +150,8 @@ class Graph:
         # 记录u，v两节点之间的距离
         # 要注意的是如果是有向图只需定义单向的权重
         # 如果是无向图则需定义双向权重
-        self.edges[u-1][v-1] = 1
-        self.edges[v-1][u-1] = 1
+        self.edges[u - 1][v - 1] = 1
+        self.edges[v - 1][u - 1] = 1
 
     def dijkstra(self, start_vertex):
         # 开始时定义源节点到其他所有节点的距离为无穷大
@@ -156,11 +188,11 @@ class Graph:
 
 
 def Dijkstra():
-    g = Graph(len(switch)+len(host))
+    g = Graph(len(switch) + len(hosts))
     for link in link_between_switch:
         g.add_edge(link.src.dpid, link.dst.dpid)
-    for i in range(len(host)):
-        g.add_edge(i+1+len(switch),host[i].port.dpid)
+    for i in range(len(hosts)):
+        g.add_edge(i + 1 + len(switch), hosts[i].port.dpid)
     D, previousVertex = g.dijkstra(0)
     # print(previousVertex)
     # 每个节点的前节点，可通过回溯得到最短路径
