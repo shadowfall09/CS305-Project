@@ -28,6 +28,8 @@ class ControllerApp(app_manager.RyuApp):
     def handle_switch_add(self, ev):
         print("switch_add")
         switch.append(ev.switch.dp)
+        # print(ev.switch)
+        # print(ev.switch.dp)
         # print(ev.switch.dp.ports)
         # attributes = vars(ev.switch.dp.ports)
         # print(attributes)
@@ -47,6 +49,8 @@ class ControllerApp(app_manager.RyuApp):
         print('host_add')
         hosts.append(ev.host)
         # print(ev.host)
+        # print(ev.host.ipv4)
+        # print(ev.host.ipv4[0])
         # attributes = vars(ev.host)
         # print(attributes)
         """
@@ -59,6 +63,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
+        # print(ev.link)
         # attributes = vars(ev.link.src)
         # print(attributes)
         # attributes = vars(ev.link.dst)
@@ -109,13 +114,13 @@ class ControllerApp(app_manager.RyuApp):
             pkt_dhcp = pkt.get_protocols(dhcp.dhcp)
             inPort = msg.in_port
             if not pkt_dhcp:
-                print(pkt)
+                # print(pkt)
                 if pkt.get_protocols(arp.arp):
                     reply_pkt = packet.Packet()
                     reply_mac = '00:00:00:00:00:00'
                     for host in hosts:
-                        print(f"host.ipv4 {host.ipv4[0]}")
-                        print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
+                        # print(f"host.ipv4 {host.ipv4[0]}")
+                        # print(f"pkt {pkt.get_protocol(arp.arp).dst_ip}")
                         if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
                             reply_mac = host.mac
                             break
@@ -123,8 +128,11 @@ class ControllerApp(app_manager.RyuApp):
                                           src=DHCPServer.hardware_addr,
                                           ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
                     a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
-                                hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
+                                opcode=arp.ARP_REPLY,
                                 src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                    # a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                    #             hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
+                    #             src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
                     reply_pkt.add_protocol(e)
                     reply_pkt.add_protocol(a)
                     self._send_packet(datapath, inPort, reply_pkt)
@@ -197,7 +205,8 @@ def Dijkstra():
     # print(previousVertex)
     # 每个节点的前节点，可通过回溯得到最短路径
     for vertex in range(len(D)):
-        print(f"distance from vertex {0} to vertex {vertex} is {D[vertex]}")
+        pass
+        # print(f"distance from vertex {0} to vertex {vertex} is {D[vertex]}")
 
     # 节点名字与数字的对应表
     # dic = {0: 's', 1: 'v', 2: 'u', 3: 'w', 4: 't', 5: 'z'}
