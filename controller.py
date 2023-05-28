@@ -43,11 +43,11 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventHostAdd)
     def handle_host_add(self, ev):
-        print('host_add')
+        # print('host_add')
         host.append(ev.host)
         # print(ev.host.port)
         attributes = vars(ev.host.port)
-        print(attributes)
+        # print(attributes)
         """
         Event handler indiciating a host has joined the network
         This handler is automatically triggered when a host sends an ARP response.
@@ -56,12 +56,12 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventLinkAdd)
     def handle_link_add(self, ev):
-        print('link_add')
+        # print('link_add')
         link_between_switch.append(ev.link)
         attributes = vars(ev.link.src)
-        print(attributes)
+        # print(attributes)
         attributes = vars(ev.link.dst)
-        print(attributes)
+        # print(attributes)
         # print(ev.link.dst.name.decode())
         """
         Event handler indicating a link between two switches has been added
