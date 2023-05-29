@@ -16,9 +16,59 @@ from ryu.ofproto import ofproto_v1_0
 from dhcp import DHCPServer
 from queue import PriorityQueue
 
-switch = []
+switches_list = []
 link_between_switch = []
 hosts = []
+
+
+class Graph:
+    def __init__(self, num_of_vertices):
+        self.vertices = num_of_vertices
+        # 距离表
+        self.edges = [[-1 for i in range(num_of_vertices)] for j in range(num_of_vertices)]
+        # 记录被访问过的节点
+        self.visited = []
+
+    def add_edge(self, u, v):
+        # 记录u，v两节点之间的距离
+        # 要注意的是如果是有向图只需定义单向的权重
+        # 如果是无向图则需定义双向权重
+        self.edges[u][v] = 1
+        # self.edges[v - 1][u - 1] = 1
+
+    def dijkstra(self, start_vertex):
+        self.visited = []
+        # 开始时定义源节点到其他所有节点的距离为无穷大
+        D = {v: float('inf') for v in range(self.vertices)}
+        # 源节点到自己的距离为0
+        D[start_vertex] = 0
+        # 优先队列
+        pq = PriorityQueue()
+        pq.put((0, start_vertex))
+        # 记录每个节点的前节点，便于回溯
+        previousVertex = {}
+
+        while not pq.empty():
+            # 得到优先级最高的节点，也就是前节点到其他节点距离最短的节点作为当前出发节点
+            (dist, current_vertex) = pq.get()
+            # 标记已访问过的节点(最有路径集合)
+            self.visited.append(current_vertex)
+
+            for neighbor in range(self.vertices):
+                # 邻居节点之间距离不能为-1
+                if self.edges[current_vertex][neighbor] != -1:
+                    distance = self.edges[current_vertex][neighbor]
+                    # 已经访问过的节点不能再次被访问
+                    if neighbor not in self.visited:
+                        # 更新源节点到其他节点的最短路径
+                        old_cost = D[neighbor]
+                        new_cost = D[current_vertex] + distance
+                        if new_cost < old_cost:
+                            # 加入优先队列
+                            pq.put((new_cost, neighbor))
+                            D[neighbor] = new_cost
+                            previousVertex[neighbor] = current_vertex
+        return D, previousVertex
 
 
 class ControllerApp(app_manager.RyuApp):
@@ -30,8 +80,9 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventSwitchEnter)
     def handle_switch_add(self, ev):
         print("switch_add")
-        switch.append(ev.switch)
-        self.Dijkstra_change()
+        switches_list.append(ev.switch)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
         # print(ev.switch.dp.ports)
         # attributes = vars(ev.switch.dp.id)
         # print(attributes)
@@ -42,6 +93,9 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventSwitchLeave)
     def handle_switch_delete(self, ev):
         print('switch_delete')
+        switches_list.remove(ev.switch)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
         """
         Event handler indicating a switch has been removed
         """
@@ -50,6 +104,9 @@ class ControllerApp(app_manager.RyuApp):
     def handle_host_add(self, ev):
         print('host_add')
         hosts.append(ev.host)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
+        # print(type(ev.host.mac))
         # print(ev.host)
         # print(ev.host.ipv4)
         # print(ev.host.ipv4[0])
@@ -65,8 +122,9 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
-        self.Dijkstra_change()
-        # print(ev.link)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
+        # print(type(ev.link.src.port_no))
         # attributes = vars(ev.link.src)
         # print(attributes)
         # attributes = vars(ev.link.dst)
@@ -79,6 +137,9 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventLinkDelete)
     def handle_link_delete(self, ev):
+        link_between_switch.remove(ev.link)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
         """
         Event handler indicating when a link between two switches has been deleted
         """
@@ -132,9 +193,9 @@ class ControllerApp(app_manager.RyuApp):
                         e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
                                               src=DHCPServer.hardware_addr,
                                               ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
-                        a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                        a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip, dst_mac=pkt.get_protocol(arp.arp).src_mac,
                                     opcode=arp.ARP_REPLY,
-                                    src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                                    src_ip=pkt.get_protocol(arp.arp).dst_ip, src_mac=reply_mac)
                         # a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
                         #             hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
                         #             src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
@@ -192,10 +253,50 @@ class ControllerApp(app_manager.RyuApp):
         # ofproto_v1_0_parser.OFPActionOutput
         # ofproto_v1_0.OFP_DEFAULT_PRIORITY
 
-    def generate_flow_table(self):
+    def generate_flow_table(self, graph):
         for i in range(0, len(hosts)):
             for j in range(i + 1, len(hosts)):
-                pass
+                switch1_index = -1
+                switch2_index = -1
+                dpid1 = hosts[i].port.dpid
+                dpid2 = hosts[j].port.dpid
+                print(dpid1)
+                print(dpid2)
+                for k in range(0, len(switches_list)):
+                    if switches_list[k].dp.id == dpid1:
+                        switch1_index = k
+                    if switches_list[k].dp.id == dpid2:
+                        switch2_index = k
+                    if (switch1_index != -1) and (switch2_index != -1):
+                        break
+                print(switch1_index)
+                print(switch2_index)
+                self.insert_flow_table(switches_list[switch1_index].dp, hosts[i].mac, hosts[i].port.port_no)
+                self.insert_flow_table(switches_list[switch2_index].dp, hosts[j].mac, hosts[j].port.port_no)
+                (distances, parents) = graph.dijkstra(switch1_index)
+                print(distances)
+                print(parents)
+                print()
+                if distances[switch2_index] != float('inf'):
+                    switch_index_current = parents[switch2_index]
+                    switch_index_last = switch2_index
+                    print(switch_index_current)
+                    print(switch_index_last)
+                    while True:
+                        for link in link_between_switch:
+                            print(link.src.dpid)
+                            print(link.dst.dpid)
+                            if (link.src.dpid == switches_list[switch_index_current].dp.id) and (link.dst.dpid == switches_list[switch_index_last].dp.id):
+                                print(switch_index_current)
+                                print(switch_index_last)
+                                self.insert_flow_table(switches_list[switch_index_current].dp, hosts[j].mac, link.src.port_no)
+                                self.insert_flow_table(switches_list[switch_index_last].dp, hosts[i].mac, link.dst.port_no)
+                                break
+                        if switch_index_current in parents:
+                            switch_index_last = switch_index_current
+                            switch_index_current = parents[switch_index_current]
+                        else:
+                            break
 
     def Dijkstra_change(self):
         # if len(link_between_switch) == 0:
@@ -204,16 +305,16 @@ class ControllerApp(app_manager.RyuApp):
         dic = {}
         dic2 = {}
         o = 0
-        for one_switch in switch:
+        for one_switch in switches_list:
             dic[o] = one_switch.dp.id
             dic2[one_switch.dp.id] = o
             o += 1
-        graph = Graph(len(switch))
+        graph = Graph(len(switches_list))
         for link in link_between_switch:
             graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
-        for source0 in range(len(switch)):
+        for source0 in range(len(switches_list)):
             D, previousVertex = graph.dijkstra(source0)
-            for target0 in range(len(switch)):
+            for target0 in range(len(switches_list)):
                 try:
                     path = []
                     cheapest_path = []
@@ -235,54 +336,3 @@ class ControllerApp(app_manager.RyuApp):
                 except KeyError:
                     print(f"switch {dic[source0]} is not connected to switch {dic[target0]}")
         return graph
-
-class Graph:
-    def __init__(self, num_of_vertices):
-        self.vertices = num_of_vertices
-        # 距离表
-        self.edges = [[-1 for i in range(num_of_vertices)] for j in range(num_of_vertices)]
-        # 记录被访问过的节点
-        self.visited = []
-
-    def add_edge(self, u, v):
-        # 记录u，v两节点之间的距离
-        # 要注意的是如果是有向图只需定义单向的权重
-        # 如果是无向图则需定义双向权重
-        self.edges[u][v] = 1
-        # self.edges[v - 1][u - 1] = 1
-
-    def dijkstra(self, start_vertex):
-        self.visited = []
-        # 开始时定义源节点到其他所有节点的距离为无穷大
-        D = {v: float('inf') for v in range(self.vertices)}
-        # 源节点到自己的距离为0
-        D[start_vertex] = 0
-        # 优先队列
-        pq = PriorityQueue()
-        pq.put((0, start_vertex))
-        # 记录每个节点的前节点，便于回溯
-        previousVertex = {}
-
-        while not pq.empty():
-            # 得到优先级最高的节点，也就是前节点到其他节点距离最短的节点作为当前出发节点
-            (dist, current_vertex) = pq.get()
-            # 标记已访问过的节点(最有路径集合)
-            self.visited.append(current_vertex)
-
-            for neighbor in range(self.vertices):
-                # 邻居节点之间距离不能为-1
-                if self.edges[current_vertex][neighbor] != -1:
-                    distance = self.edges[current_vertex][neighbor]
-                    # 已经访问过的节点不能再次被访问
-                    if neighbor not in self.visited:
-                        # 更新源节点到其他节点的最短路径
-                        old_cost = D[neighbor]
-                        new_cost = D[current_vertex] + distance
-                        if new_cost < old_cost:
-                            # 加入优先队列
-                            pq.put((new_cost, neighbor))
-                            D[neighbor] = new_cost
-                            previousVertex[neighbor] = current_vertex
-        return D, previousVertex
-
-
