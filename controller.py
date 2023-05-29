@@ -10,6 +10,9 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import packet
 from ryu.lib.packet import udp
+from ryu.lib import mac
+from ryu.ofproto import ofproto_v1_0_parser
+from ryu.ofproto import ofproto_v1_0
 from dhcp import DHCPServer
 from queue import PriorityQueue
 
@@ -28,7 +31,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_switch_add(self, ev):
         print("switch_add")
         switch.append(ev.switch)
-        Dijkstra(ev.switch.dp.id)
+        # Dijkstra(ev.switch.dp.id)
         # print(ev.switch.dp.ports)
         # attributes = vars(ev.switch.dp.id)
         # print(attributes)
@@ -62,8 +65,8 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
-        Dijkstra(ev.link.src.dpid)
-        Dijkstra(ev.link.dst.dpid)
+        # Dijkstra(ev.link.src.dpid)
+        # Dijkstra(ev.link.dst.dpid)
         # print(ev.link)
         # attributes = vars(ev.link.src)
         # print(attributes)
@@ -148,6 +151,47 @@ class ControllerApp(app_manager.RyuApp):
         except Exception as e:
             self.logger.error(e)
 
+    def insert_flow_table(self, datapath, dst_mac, port):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(dl_dst=dst_mac)
+        actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPFlowMod(datapath=datapath, match=match, command=ofproto.OFPFC_ADD, actions=actions)
+        datapath.send_msg(out)
+
+        # ofproto_v1_0_parser.OFPFlowMod
+        # ofproto_v1_0_parser.OFPMatch
+        # ofproto_v1_0_parser.OFPActionOutput
+        # ofproto_v1_0.OFP_DEFAULT_PRIORITY
+
+    def modify_flow_table(self, datapath, dst_mac, port):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(dl_dst=dst_mac)
+        actions = [parser.OFPActionOutput(port=port)]
+        out = parser.OFPFlowMod(datapath=datapath, match=match, command=ofproto.OFPFC_MODIFY, actions=actions)
+        datapath.send_msg(out)
+
+        # ofproto_v1_0_parser.OFPFlowMod
+        # ofproto_v1_0_parser.OFPMatch
+        # ofproto_v1_0_parser.OFPActionOutput
+        # ofproto_v1_0.OFP_DEFAULT_PRIORITY
+
+    def remove_flow_table(self, datapath, dst_mac, port=0):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(dl_dst=dst_mac)
+        out = None
+        if port == 0:
+            out = parser.OFPFlowMod(datapath=datapath, match=match, command=ofproto.OFPFC_DELETE)
+        else:
+            out = parser.OFPFlowMod(datapath=datapath, match=match, command=ofproto.OFPFC_DELETE, out_port=port)
+        datapath.send_msg(out)
+
+        # ofproto_v1_0_parser.OFPFlowMod
+        # ofproto_v1_0_parser.OFPMatch
+        # ofproto_v1_0_parser.OFPActionOutput
+        # ofproto_v1_0.OFP_DEFAULT_PRIORITY
 
 class Graph:
     def __init__(self, num_of_vertices):
