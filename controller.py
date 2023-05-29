@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -15,6 +16,7 @@ from ryu.ofproto import ofproto_v1_0_parser
 from ryu.ofproto import ofproto_v1_0
 from dhcp import DHCPServer
 from queue import PriorityQueue
+import networkx as nx
 
 switches_list = []
 link_between_switch = []
@@ -309,9 +311,14 @@ class ControllerApp(app_manager.RyuApp):
             dic[o] = one_switch.dp.id
             dic2[one_switch.dp.id] = o
             o += 1
+        G = nx.Graph()
         graph = Graph(len(switches_list))
         for link in link_between_switch:
+            G.add_edge(link.src.dpid, link.dst.dpid)
             graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
+        nx.draw(G,with_labels=True)
+        plt.savefig("/home/rt/cs305/CS305-Project/fig.jpg")
+        plt.close()
         for source0 in range(len(switches_list)):
             D, previousVertex = graph.dijkstra(source0)
             for target0 in range(len(switches_list)):
