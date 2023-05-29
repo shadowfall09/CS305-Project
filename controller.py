@@ -228,7 +228,7 @@ def Dijkstra_change():
                         target = previousVertex[target]
                 # 节点名字由数字转成字符
                 for point in path[:: -1]:
-                    cheapest_path.append(str(point + 1))
+                    cheapest_path.append(str(dic[point]))
                 cheapest_path = "->".join(cheapest_path)
                 print(f"distance from switch {dic[source0]} to switch {dic[target0]} is {D[target0]},"
                       f"the shortest path is {cheapest_path}")
