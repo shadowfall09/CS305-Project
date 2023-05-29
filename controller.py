@@ -31,7 +31,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_switch_add(self, ev):
         print("switch_add")
         switch.append(ev.switch)
-        # Dijkstra(ev.switch.dp.id)
+        Dijkstra_change()
         # print(ev.switch.dp.ports)
         # attributes = vars(ev.switch.dp.id)
         # print(attributes)
@@ -65,8 +65,7 @@ class ControllerApp(app_manager.RyuApp):
     def handle_link_add(self, ev):
         print('link_add')
         link_between_switch.append(ev.link)
-        # Dijkstra(ev.link.src.dpid)
-        # Dijkstra(ev.link.dst.dpid)
+        Dijkstra_change()
         # print(ev.link)
         # attributes = vars(ev.link.src)
         # print(attributes)
@@ -205,7 +204,7 @@ class Graph:
         # 记录u，v两节点之间的距离
         # 要注意的是如果是有向图只需定义单向的权重
         # 如果是无向图则需定义双向权重
-        self.edges[u - 1][v - 1] = 1
+        self.edges[u][v] = 1
         # self.edges[v - 1][u - 1] = 1
 
     def dijkstra(self, start_vertex):
@@ -242,32 +241,40 @@ class Graph:
         return D, previousVertex
 
 
-def Dijkstra(source):
-    g = Graph(len(switch))
+def Dijkstra_change():
     if len(link_between_switch) == 0:
         print('Currently no edges!')
         return
-    for link in link_between_switch:
-        g.add_edge(link.src.dpid, link.dst.dpid)
-    D, previousVertex = g.dijkstra(source-1)
-    for target0 in range(len(switch)):
-        try:
-            path = []
-            cheapest_path = []
-            target = target0
-            # 回溯，得到源节点到目标节点的最佳路径
-            while True:
-                if target == source-1:
-                    path.append(source-1)
-                    break
-                else:
-                    path.append(target)
-                    target = previousVertex[target]
-            # 节点名字由数字转成字符
-            for point in path[:: -1]:
-                cheapest_path.append(str(point+1))
-            cheapest_path = "->".join(cheapest_path)
-            print(f"distance from switch {source} to switch {target0+1} is {D[target0]},"
-                  f"the shortest path is {cheapest_path}")
-        except KeyError:
-            print(f"switch {source} is not connected to switch {target0+1}")
+    dic = {}
+    dic2 = {}
+    o = 0
+    for one_switch in switch:
+        dic[o] = one_switch.dp.id
+        dic2[one_switch.dp.id] = o
+        o += 1
+    for source0 in range(len(switch)):
+        g = Graph(len(switch))
+        for link in link_between_switch:
+            g.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
+        D, previousVertex = g.dijkstra(source0)
+        for target0 in range(len(switch)):
+            try:
+                path = []
+                cheapest_path = []
+                target = target0
+                # 回溯，得到源节点到目标节点的最佳路径
+                while True:
+                    if target == source0:
+                        path.append(source0)
+                        break
+                    else:
+                        path.append(target)
+                        target = previousVertex[target]
+                # 节点名字由数字转成字符
+                for point in path[:: -1]:
+                    cheapest_path.append(str(dic[point]))
+                cheapest_path = "->".join(cheapest_path)
+                print(f"distance from switch {dic[source0]} to switch {dic[target0]} is {D[target0]},"
+                      f"the shortest path is {cheapest_path}")
+            except KeyError:
+                print(f"switch {dic[source0]} is not connected to switch {dic[target0]}")
