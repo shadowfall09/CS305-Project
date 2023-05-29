@@ -116,28 +116,29 @@ class ControllerApp(app_manager.RyuApp):
             inPort = msg.in_port
             if not pkt_dhcp:
                 if pkt.get_protocols(arp.arp):
-                    # print(pkt)
-                    reply_pkt = packet.Packet()
-                    reply_mac = '00:00:00:00:00:00'
-                    if pkt.get_protocol(arp.arp).dst_ip == pkt.get_protocol(arp.arp).src_ip:
-                        reply_mac = pkt.get_protocol(arp.arp).src_mac
-                    else:
+                    if pkt.get_protocol(arp.arp).dst_ip != pkt.get_protocol(arp.arp).src_ip:
+                        # print(pkt)
+                        reply_pkt = packet.Packet()
+                        reply_mac = '00:00:00:00:00:00'
+                        # if pkt.get_protocol(arp.arp).dst_ip == pkt.get_protocol(arp.arp).src_ip:
+                        #     reply_mac = pkt.get_protocol(arp.arp).src_mac
+                        # else:
                         for host in hosts:
                             if host.ipv4[0] == pkt.get_protocol(arp.arp).dst_ip:
                                 reply_mac = host.mac
                                 break
-                    e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
-                                          src=DHCPServer.hardware_addr,
-                                          ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
-                    a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
-                                opcode=arp.ARP_REPLY,
-                                src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
-                    # a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
-                    #             hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
-                    #             src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
-                    reply_pkt.add_protocol(e)
-                    reply_pkt.add_protocol(a)
-                    self._send_packet(datapath, inPort, reply_pkt)
+                        e = ethernet.ethernet(dst=pkt.get_protocol(ethernet.ethernet).src,
+                                              src=DHCPServer.hardware_addr,
+                                              ethertype=pkt.get_protocol(ethernet.ethernet).ethertype)
+                        a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                                    opcode=arp.ARP_REPLY,
+                                    src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                        # a = arp.arp(dst_ip=pkt.get_protocol(arp.arp).src_ip,dst_mac=pkt.get_protocol(arp.arp).src_mac,
+                        #             hlen=6,hwtype=1,opcode=2,plen=4,proto=2048,
+                        #             src_ip=pkt.get_protocol(arp.arp).dst_ip,src_mac=reply_mac)
+                        reply_pkt.add_protocol(e)
+                        reply_pkt.add_protocol(a)
+                        self._send_packet(datapath, inPort, reply_pkt)
                 # Dijkstra()
                 # TODO: handle other protocols like ARP
                 pass
