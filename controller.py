@@ -214,6 +214,8 @@ class ControllerApp(app_manager.RyuApp):
                 self.insert_flow_table(switches_list[switch2_index].dp, hosts[j].mac, hosts[j].port.port_no)
                 (distances, parents) = graph.dijkstra(switch1_index)
                 if distances[switch2_index] != float('inf'):
+                    if switch2_index not in parents:
+                        continue
                     switch_index_current = parents[switch2_index]
                     switch_index_last = switch2_index
                     while True:
