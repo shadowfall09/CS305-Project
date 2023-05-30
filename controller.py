@@ -30,7 +30,9 @@ class Graph:
 
     def dijkstra(self, start_vertex):
         self.visited = []
-        D = {v: float('inf') for v in range(self.vertices)}
+        D = {}
+        for v in range(self.vertices):
+            D[v] = float('inf')
         D[start_vertex] = 0
         pq = PriorityQueue()
         pq.put((0, start_vertex))
