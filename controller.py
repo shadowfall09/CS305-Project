@@ -93,7 +93,10 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventSwitchLeave)
     def handle_switch_delete(self, ev):
         print('switch_delete')
-        switches_list.remove(ev.switch)
+        for one_switch in switches_list:
+            if one_switch.dp.id == ev.switch.dp.id:
+                switches_list.remove(one_switch)
+                break
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
         """
