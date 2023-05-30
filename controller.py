@@ -21,6 +21,7 @@ import networkx as nx
 switches_list = []
 link_between_switch = []
 hosts = []
+figure_cnt = 0
 
 
 class Graph:
@@ -85,9 +86,6 @@ class ControllerApp(app_manager.RyuApp):
         switches_list.append(ev.switch)
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
-        # print(ev.switch.dp.ports)
-        # attributes = vars(ev.switch.dp.id)
-        # print(attributes)
         """
         Event handler indicating a switch has come online.
         """
@@ -108,12 +106,6 @@ class ControllerApp(app_manager.RyuApp):
         hosts.append(ev.host)
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
-        # print(type(ev.host.mac))
-        # print(ev.host)
-        # print(ev.host.ipv4)
-        # print(ev.host.ipv4[0])
-        # attributes = vars(ev.host)
-        # print(attributes)
         """
         Event handler indiciating a host has joined the network
         This handler is automatically triggered when a host sends an ARP response.
@@ -127,8 +119,8 @@ class ControllerApp(app_manager.RyuApp):
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
         # print(type(ev.link.src.port_no))
-        # attributes = vars(ev.link.src)
-        # print(attributes)
+        attributes = vars(ev.link.src)
+        print(attributes)
         # attributes = vars(ev.link.dst)
         # print(attributes)
         # print(ev.link.dst.name.decode())
@@ -288,11 +280,14 @@ class ControllerApp(app_manager.RyuApp):
                         for link in link_between_switch:
                             print(link.src.dpid)
                             print(link.dst.dpid)
-                            if (link.src.dpid == switches_list[switch_index_current].dp.id) and (link.dst.dpid == switches_list[switch_index_last].dp.id):
+                            if (link.src.dpid == switches_list[switch_index_current].dp.id) and (
+                                    link.dst.dpid == switches_list[switch_index_last].dp.id):
                                 print(switch_index_current)
                                 print(switch_index_last)
-                                self.insert_flow_table(switches_list[switch_index_current].dp, hosts[j].mac, link.src.port_no)
-                                self.insert_flow_table(switches_list[switch_index_last].dp, hosts[i].mac, link.dst.port_no)
+                                self.insert_flow_table(switches_list[switch_index_current].dp, hosts[j].mac,
+                                                       link.src.port_no)
+                                self.insert_flow_table(switches_list[switch_index_last].dp, hosts[i].mac,
+                                                       link.dst.port_no)
                                 break
                         if switch_index_current in parents:
                             switch_index_last = switch_index_current
@@ -316,8 +311,10 @@ class ControllerApp(app_manager.RyuApp):
         for link in link_between_switch:
             G.add_edge(link.src.dpid, link.dst.dpid)
             graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
-        nx.draw(G,with_labels=True)
-        plt.savefig("/home/rt/cs305/CS305-Project/fig.jpg")
+        nx.draw(G, with_labels=True)
+        global figure_cnt
+        plt.savefig(f"/home/rt/cs305/CS305-Project/fig{figure_cnt}.jpg")
+        figure_cnt += 1
         plt.close()
         for source0 in range(len(switches_list)):
             D, previousVertex = graph.dijkstra(source0)
