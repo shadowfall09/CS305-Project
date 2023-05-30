@@ -21,6 +21,7 @@ import networkx as nx
 switches_list = []
 link_between_switch = []
 hosts = []
+figure_cnt = 0
 
 
 class Graph:
@@ -350,11 +351,12 @@ class ControllerApp(app_manager.RyuApp):
         dic = {}
         dic2 = {}
         o = 0
+        G = nx.Graph()
         for one_switch in switches_list:
             dic[o] = one_switch.dp.id
             dic2[one_switch.dp.id] = o
             o += 1
-        G = nx.Graph()
+            G.add_node(one_switch.dp.id)
         graph = Graph(len(switches_list))
         for link in link_between_switch:
             if (link.src.dpid in dic2) and (link.dst.dpid in dic2):
@@ -362,7 +364,10 @@ class ControllerApp(app_manager.RyuApp):
                     G.add_edge(link.src.dpid, link.dst.dpid)
                     graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
         nx.draw(G,with_labels=True)
-        plt.savefig("/home/rt/CS305-Project/fig.jpg")
+        global figure_cnt
+        plt.savefig(f"/home/parallels/PycharmProjects/CS305-Project/network_fig/fig{figure_cnt}.jpg")
+        # plt.savefig(f"/home/rt/cs305/CS305-Project/network_fig/fig{figure_cnt}.jpg")
+        figure_cnt += 1
         plt.close()
         for source0 in range(len(switches_list)):
             D, previousVertex = graph.dijkstra(source0)
