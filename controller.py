@@ -95,7 +95,19 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventSwitchLeave)
     def handle_switch_delete(self, ev):
         print('switch_delete')
-        switches_list.remove(ev.switch)
+        print([ev.switch])
+        for i in switches_list:
+            print('++++++++++++++')
+            print(i)
+        print(switches_list)
+        for switch in switches_list:
+            if switch.dp.id == ev.switch.dp.id:
+                switches_list.remove(switch)
+                break
+        # switches_list.remove(ev.switch)
+        for i in switches_list:
+            print('++++++++++++++')
+            print(i)
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
         """
@@ -139,7 +151,15 @@ class ControllerApp(app_manager.RyuApp):
 
     @set_ev_cls(event.EventLinkDelete)
     def handle_link_delete(self, ev):
-        link_between_switch.remove(ev.link)
+        print('link delete')
+        print(ev.link)
+        print(link_between_switch)
+        print([link_between_switch[0]])
+        for link in link_between_switch:
+            if (link.src.dpid == ev.link.src.dpid) and (link.src.port_no == ev.link.src.port_no) and (link.dst.dpid == ev.link.dst.dpid) and (link.dst.port_no == ev.link.dst.port_no):
+                link_between_switch.remove(link)
+        # link_between_switch.remove(ev.link)
+        print(link_between_switch)
         graph = self.Dijkstra_change()
         self.generate_flow_table(graph)
         """
@@ -150,6 +170,29 @@ class ControllerApp(app_manager.RyuApp):
     @set_ev_cls(event.EventPortModify)
     def handle_port_modify(self, ev):
         print('port modify')
+        print(ev)
+        print(vars(ev.port))
+        for switch in switches_list:
+            print(vars(switch))
+        for link in link_between_switch:
+            print(link)
+        for switch in switches_list:
+            if switch.dp.id == ev.port.dpid:
+                for i in range(len(switch.ports)):
+                    if switch.ports[i].port_no == ev.port.port_no:
+                        switch.ports[i] = ev.port
+        for switch in switches_list:
+            for i in switch.ports:
+                print(i)
+        for link in link_between_switch:
+            if (link.src.dpid == ev.port.dpid) and (link.src.port_no == ev.port.port_no):
+                link.src = ev.port
+            if (link.dst.dpid == ev.port.dpid) and (link.dst.port_no == ev.port.port_no):
+                link.dst = ev.port
+        for link in link_between_switch:
+            print(link)
+        graph = self.Dijkstra_change()
+        self.generate_flow_table(graph)
         """
         Event handler for when any switch port changes state.
         This includes links for hosts as well as links between switches.
@@ -314,10 +357,12 @@ class ControllerApp(app_manager.RyuApp):
         G = nx.Graph()
         graph = Graph(len(switches_list))
         for link in link_between_switch:
-            G.add_edge(link.src.dpid, link.dst.dpid)
-            graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
+            if (link.src.dpid in dic2) and (link.dst.dpid in dic2):
+                if (link.src._state == 0) and (link.dst._state == 0):
+                    G.add_edge(link.src.dpid, link.dst.dpid)
+                    graph.add_edge(dic2[link.src.dpid], dic2[link.dst.dpid])
         nx.draw(G,with_labels=True)
-        plt.savefig("/home/rt/cs305/CS305-Project/fig.jpg")
+        plt.savefig("/home/rt/CS305-Project/fig.jpg")
         plt.close()
         for source0 in range(len(switches_list)):
             D, previousVertex = graph.dijkstra(source0)
